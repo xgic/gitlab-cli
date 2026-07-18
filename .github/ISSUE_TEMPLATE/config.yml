@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Contributing Guidelines
+    url: https://github.com/xgic/gitlab-cli/blob/main/CONTRIBUTING.md
+    about: Please read our contribution guidelines before opening an issue.
+  - name: Multi-repo standards
+    url: https://github.com/xgic/ai
+    about: XGIC public multi-repo standards hub.
