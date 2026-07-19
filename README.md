@@ -83,6 +83,12 @@ uv pip install "xgic-cli>=0.2.0" "xgic-gitlab-cli"
 xgic gitlab --help
 ```
 
+### Requirements
+
+- Python **3.14+**
+- `xgic-cli` ≥ 0.2.0
+- Docker / Docker Compose for stack ops (`health` / `backup` / `restore`)
+
 ---
 
 ## Console commands
@@ -92,20 +98,42 @@ All product commands nest under **`xgic gitlab`**:
 | Command | Purpose |
 |---------|---------|
 | `xgic gitlab info` | Module version and status (`--json` supported) |
+| `xgic gitlab health` | Compose service checks + optional HTTP `/-/health` |
+| `xgic gitlab backup` | `gitlab-backup create` via `docker compose exec` |
+| `xgic gitlab restore <id>` | Destructive restore (`--yes` required; prefer `--dry-run` first) |
 
-**Planned (not yet implemented):** `backup`, `restore`, `health`, and related ops.
+### Configuration (no private host defaults)
+
+| Setting | Flag | Environment |
+|---------|------|-------------|
+| Compose file | `--compose-file` | `XGIC_GITLAB_COMPOSE_FILE` (default `docker-compose.yml`) |
+| Project name | `--project` | `XGIC_GITLAB_COMPOSE_PROJECT` (default `xgic-gitlab`) |
+| GitLab EE service | `--gitlab-service` | `XGIC_GITLAB_EE_SERVICE` (default `gitlab-ee`) |
+| Orchestration service | `--xgic-service` | `XGIC_GITLAB_ORCH_SERVICE` (default `xgic-gitlab`) |
+| Backup dir hint | `--backup-dir` | `XGIC_GITLAB_BACKUP_DIR` |
+| GitLab URL | `--url` | `GITLAB_URL` (**no default**) |
+| Token | `--token` | `GITLAB_TOKEN` (never logged) |
+
+Shared: `--dry-run`, `--json`.
+
+### Examples
+
+```bash
+# From a checked-out xgic/gitlab template directory
+export GITLAB_URL=http://localhost:8929
+xgic gitlab health --json
+xgic gitlab backup --dry-run
+xgic gitlab restore 20240101_1200 --dry-run
+# after confirmation:
+xgic gitlab restore 20240101_1200 --yes
+```
 
 ---
 
 ## Status
 
-**0.1.0 — bootstrap.** Nested `xgic gitlab` group with `info` stub. Backup/restore and health
-automation land in later slices.
-
-### Requirements
-
-- Python **3.14+**
-- `xgic-cli` ≥ 0.2.0
+**0.1.1 — experimental.** Nested `xgic gitlab` commands: `info`, `health`, `backup`, `restore` against
+Docker Compose stacks (typically [xgic/gitlab](https://github.com/xgic/gitlab)).
 
 ---
 
@@ -114,6 +142,7 @@ automation land in later slices.
 - Use **`xgic gitlab …`** for product ops; do not hardcode private GitLab hostnames in public
   artifacts or committed examples.
 - Prefer **fictional placeholders** (`https://gitlab.example.com`) in docs and tests.
+- Destructive restore always needs **`--yes`**; start with **`--dry-run`**.
 - Follow hub
   [public-safe](https://github.com/xgic/ai/blob/main/docs/BASE-STANDARDS-FOR-ORCHESTRATED-REPOS.md)
   rules before any public GitHub write.
@@ -123,7 +152,7 @@ automation land in later slices.
 ## Public safety
 
 This package is **public-safe only**. Do not hardcode private GitLab hosts, internal inventory, or
-private tracker IDs. Operators configure endpoints via environment / flags when commands land.
+private tracker IDs. Operators configure endpoints via environment / flags.
 
 ---
 

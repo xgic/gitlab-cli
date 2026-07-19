@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xgic-gitlab-cli"
-version = "0.1.0"
+version = "0.1.1"
 description = "XGIC CLI GitLab module - GitLab ops commands and helpers (xgic.cli.gitlab)."
 readme = "README.md"
 license = { text = "Apache-2.0" }
