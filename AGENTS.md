@@ -11,7 +11,7 @@ Public repository. Follow https://github.com/xgic/ai for multi-repo standards.
 ## Scope
 
 - Nested `xgic gitlab …` product commands via entry points (`xgic.cli.commands`)
-- GitLab ops helpers suitable for public exemplary use (backup/restore/health — planned)
+- GitLab ops helpers for public exemplary use (`health` / `backup` / `restore` via Compose + env/flags)
 - GraphQL automation via [xgic/gitlab-graphql](https://github.com/xgic/gitlab-graphql) when wired
 
 ## Out of scope
