@@ -1,0 +1,215 @@
+# Public Python package release — https://github.com/xgic/ai/blob/main/docs/python-package-release.md
+# Publish after xgic-cli for the same version line when releasing a stack.
+
+name: Release
+# Final vX.Y.Z requires prior vX.Y.Zrc* (require-prior-rc job).
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+
+      - name: Build
+        run: uv build
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+
+  # Final tags (no "rc") must have a prior matching RC tag
+  # (https://github.com/xgic/ai/blob/main/docs/python-package-release.md §8.1).
+  require-prior-rc:
+    name: Require prior RC tag
+    if: ${{ !contains(github.ref_name, 'rc') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail final release without vX.Y.Zrc* tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force origin
+          FINAL="${TAG#v}"
+          mapfile -t RCS < <(git tag -l "v${FINAL}rc*" 2>/dev/null || true)
+          if [[ ${#RCS[@]} -eq 0 ]]; then
+            echo "::error::Final tag ${TAG} requires a prior RC tag matching v${FINAL}rc* (e.g. v${FINAL}rc1)."
+            echo "Standard process (https://github.com/xgic/ai/blob/main/docs/python-package-release.md):"
+            echo "  1) Set version ${FINAL}rc1 in pyproject.toml; tag v${FINAL}rc1; wait for TestPyPI smoke"
+            echo "  2) Set version ${FINAL}; tag v${FINAL}"
+            exit 1
+          fi
+          echo "Prior RC tag(s) for ${FINAL}: ${RCS[*]}"
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    if: contains(github.ref_name, 'rc')
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/xgic-gitlab-cli/
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/
+
+  smoke-testpypi:
+    name: Smoke install (TestPyPI)
+    if: contains(github.ref_name, 'rc')
+    needs: [publish-testpypi]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install stack from TestPyPI
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          # Domain module may release independently of core (same major.minor series).
+          # --index-strategy unsafe-best-match: package may already exist on PyPI.
+          # --prerelease allow: required for X.Y.ZrcN pins.
+          VER="${VERSION#v}"
+          uv venv .venv-smoke
+          source .venv-smoke/bin/activate
+          uv pip install --upgrade pip
+          uv pip install \
+            --index-url https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            --index-strategy unsafe-best-match \
+            --prerelease allow \
+            "xgic-cli>=0.2.0,<0.3" \
+            "xgic-gitlab-cli==${VER}"
+          xgic --version
+          xgic gitlab --help
+          python -c "from xgic.cli import __version__; from xgic.cli.gitlab import __version__ as gv; print(__version__, gv)"
+
+  publish-pypi:
+    name: Publish to PyPI
+    if: ${{ !contains(github.ref_name, 'rc') }}
+    needs: [build, require-prior-rc]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/xgic-gitlab-cli/
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
+  smoke-pypi:
+    name: Smoke install (PyPI)
+    if: ${{ !contains(github.ref_name, 'rc') }}
+    needs: [publish-pypi]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install stack from PyPI
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          # Retry + --refresh: PyPI CDN lag and uv cache can miss a just-published version.
+          VER="${VERSION#v}"
+          uv venv .venv-smoke
+          source .venv-smoke/bin/activate
+          uv pip install --upgrade pip
+          ok=0
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if uv pip install --refresh \
+              "xgic-cli>=0.2.0,<0.3" \
+              "xgic-gitlab-cli==${VER}"; then
+              ok=1
+              break
+            fi
+            echo "PyPI install attempt ${i} failed; sleeping 20s..."
+            sleep 20
+          done
+          if [[ "${ok}" -ne 1 ]]; then
+            echo "::error::Failed to install xgic-gitlab-cli==${VER} from PyPI after retries"
+            exit 1
+          fi
+          xgic --version
+          xgic gitlab --help
+          python -c "from xgic.cli import __version__; from xgic.cli.gitlab import __version__ as gv; print(__version__, gv)"
+
+  github-release-rc:
+    name: GitHub Release (RC)
+    if: contains(github.ref_name, 'rc')
+    needs: [smoke-testpypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          prerelease: true
+          generate_release_notes: true
+
+  github-release-final:
+    name: GitHub Release (final)
+    if: ${{ !contains(github.ref_name, 'rc') }}
+    needs: [smoke-pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          prerelease: false
+          generate_release_notes: true
