@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.14"
 
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout with tags
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Fail final release without vX.Y.Zrc* tag
@@ -94,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.14"
 
@@ -114,7 +114,7 @@ jobs:
             --extra-index-url https://pypi.org/simple/ \
             --index-strategy unsafe-best-match \
             --prerelease allow \
-            "xgic-cli>=0.2.0,<0.3" \
+            "xgic-cli>=0.2.1,<0.3" \
             "xgic-gitlab-cli==${VER}"
           xgic --version
           xgic gitlab --help
@@ -150,7 +150,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.14"
 
@@ -166,7 +166,7 @@ jobs:
           ok=0
           for i in 1 2 3 4 5 6 7 8 9 10; do
             if uv pip install --refresh \
-              "xgic-cli>=0.2.0,<0.3" \
+              "xgic-cli>=0.2.1,<0.3" \
               "xgic-gitlab-cli==${VER}"; then
               ok=1
               break

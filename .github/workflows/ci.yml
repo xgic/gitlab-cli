@@ -19,17 +19,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14"
 
       - name: Install core + package
         run: |
           python -m pip install --upgrade pip
-          pip install "git+https://github.com/xgic/cli.git@main"
+          pip install "xgic-cli>=0.2.1"
           pip install -e ".[dev]"
 
       - name: Ruff
@@ -43,25 +43,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.14"
 
       - name: Build sdist and wheel
         run: uv build
 
-      - name: Clean-env install (core from main + local wheel)
+      - name: Clean-env install (PyPI core + local wheel)
         run: |
           uv venv .venv-smoke
           source .venv-smoke/bin/activate
           uv pip install --upgrade pip
-          uv pip install "git+https://github.com/xgic/cli.git@main"
+          uv pip install "xgic-cli>=0.2.1"
           uv pip install dist/*.whl
-          # Reassert core package init after domain wheel install
-          uv pip install --force-reinstall --no-deps "git+https://github.com/xgic/cli.git@main" || true
           xgic --version
           xgic gitlab --help
           xgic gitlab info
