@@ -75,12 +75,12 @@ uv pip install -e ".[graphql]"
 
 ### Install (PyPI)
 
-PyPI publish follows the hub
+[xgic-gitlab-cli 0.1.1](https://pypi.org/project/xgic-gitlab-cli/0.1.1/) is on PyPI.
+Further cuts follow the hub
 [python-package-release.md](https://github.com/xgic/ai/blob/main/docs/python-package-release.md)
-path (RC → TestPyPI → PyPI). Until the first release is published:
+path (RC → TestPyPI → PyPI).
 
 ```bash
-# After first PyPI release:
 uv pip install "xgic-gitlab-cli"
 xgic gitlab --help
 ```
