@@ -7,6 +7,8 @@ All product commands live under the ``gitlab`` group for domain ownership::
     xgic gitlab backup
     xgic gitlab restore
     xgic gitlab --help
+
+Missing ACTION prints full usage (not a short argparse required-args error).
 """
 
 from __future__ import annotations
@@ -27,13 +29,20 @@ def register(
     gitlab = subparsers.add_parser(
         "gitlab",
         help="GitLab product commands",
+        description="GitLab ops commands for the modular XGIC CLI.",
     )
     gitlab_sub = gitlab.add_subparsers(
         dest="gitlab_command",
         help="GitLab action",
         metavar="ACTION",
-        required=True,
+        required=False,
     )
+
+    def _missing_action(_args: argparse.Namespace) -> int:
+        gitlab.print_help()
+        return 2
+
+    gitlab.set_defaults(func=_missing_action)
 
     info = gitlab_sub.add_parser(
         "info",
