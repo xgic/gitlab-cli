@@ -79,7 +79,7 @@ path (RC → TestPyPI → PyPI). Until the first release is published:
 
 ```bash
 # After first PyPI release:
-uv pip install "xgic-cli>=0.2.1" "xgic-gitlab-cli"
+uv pip install "xgic-gitlab-cli"
 xgic gitlab --help
 ```
 
