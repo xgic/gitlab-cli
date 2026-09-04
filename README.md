@@ -1,8 +1,10 @@
 # XGIC GitLab CLI
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/xgic-gitlab-cli.svg)](https://pypi.org/project/xgic-gitlab-cli/)
+[![Python](https://img.shields.io/pypi/pyversions/xgic-gitlab-cli.svg)](https://pypi.org/project/xgic-gitlab-cli/)
+[![Release](https://img.shields.io/github/v/release/xgic/gitlab-cli)](https://github.com/xgic/gitlab-cli/releases)
 [![CI](https://github.com/xgic/gitlab-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/xgic/gitlab-cli/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.14+-blue?logo=python&logoColor=white)](https://www.python.org/)
 
 **GitLab product commands for the modular [XGIC CLI](https://github.com/xgic/cli)—ops under
 `xgic gitlab …`.**
@@ -73,12 +75,12 @@ uv pip install -e ".[graphql]"
 
 ### Install (PyPI)
 
-PyPI publish follows the hub
+[xgic-gitlab-cli 0.1.1](https://pypi.org/project/xgic-gitlab-cli/0.1.1/) is on PyPI.
+Further cuts follow the hub
 [python-package-release.md](https://github.com/xgic/ai/blob/main/docs/python-package-release.md)
-path (RC → TestPyPI → PyPI). Until the first release is published:
+path (RC → TestPyPI → PyPI).
 
 ```bash
-# After first PyPI release:
 uv pip install "xgic-gitlab-cli"
 xgic gitlab --help
 ```

@@ -6,3 +6,6 @@ contact_links:
   - name: Multi-repo standards
     url: https://github.com/xgic/ai
     about: XGIC public multi-repo standards hub.
+  - name: Discussions
+    url: https://github.com/xgic/gitlab-cli/discussions
+    about: Ask questions and share ideas (not for bugs or tracked feature work).

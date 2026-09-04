@@ -20,10 +20,9 @@ Thank you for contributing.
 ## Development
 
 ```bash
-python -m pip install -e ../cli
-python -m pip install -e ".[dev]"
-pytest
-ruff check src tests
+uv pip install -e ".[dev]"
+uv run pytest
+uv run ruff check src tests
 ```
 
 ## Public safety
