@@ -13,20 +13,37 @@ from xgic.cli.gitlab.commands.restore import run_restore
 from xgic.cli.gitlab.plugin import register
 
 
-def test_register_adds_gitlab_group() -> None:
-    parser = argparse.ArgumentParser()
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="xgic")
     sub = parser.add_subparsers(dest="command")
     register(sub)
-    args = parser.parse_args(["gitlab", "info"])
+    return parser
+
+
+def test_register_adds_gitlab_group() -> None:
+    args = _parser().parse_args(["gitlab", "info"])
     assert args.command == "gitlab"
     assert args.gitlab_command == "info"
     assert callable(args.func)
 
 
+def test_missing_action_prints_full_usage(capsys) -> None:
+    parser = _parser()
+    args = parser.parse_args(["gitlab"])
+    assert args.gitlab_command is None
+    code = args.func(args)
+    assert code == 2
+    out = capsys.readouterr().out
+    assert "usage:" in out.lower()
+    assert "info" in out
+    assert "health" in out
+    assert "backup" in out
+    assert "restore" in out
+    assert "the following arguments are required" not in out.lower()
+
+
 def test_register_ops_commands() -> None:
-    parser = argparse.ArgumentParser()
-    sub = parser.add_subparsers(dest="command")
-    register(sub)
+    parser = _parser()
     for action in ("health", "backup"):
         args = parser.parse_args(["gitlab", action, "--dry-run"])
         assert args.gitlab_command == action
