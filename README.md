@@ -101,8 +101,8 @@ All product commands nest under **`xgic gitlab`**:
 |---------|---------|
 | `xgic gitlab info` | Module version and status (`--json` supported) |
 | `xgic gitlab health` | Compose service checks + optional HTTP `/-/health` |
-| `xgic gitlab backup` | `gitlab-backup create` via `docker compose exec` |
-| `xgic gitlab restore <id>` | Destructive restore (`--yes` required; prefer `--dry-run` first) |
+| `xgic gitlab backup` | `gitlab-backup create`, then one `.tar.zst` pair and a `.sha256` sidecar |
+| `xgic gitlab restore` | Restore the latest verified pair, or `--archive` (`--yes` required) |
 
 ### Configuration (no private host defaults)
 
@@ -124,11 +124,30 @@ Shared: `--dry-run`, `--json`.
 # From a checked-out xgic/gitlab template directory
 export GITLAB_URL=http://localhost:8929
 xgic gitlab health --json
-xgic gitlab backup --dry-run
-xgic gitlab restore 20240101_1200 --dry-run
-# after confirmation:
-xgic gitlab restore 20240101_1200 --yes
+xgic gitlab backup \
+  --secrets-file ./gitlab-secrets.json \
+  --config-file ./gitlab.rb \
+  --dry-run
+xgic gitlab restore --dry-run
+xgic gitlab restore --archive gitlab.tar.zst --dry-run
+# after confirmation; destinations are optional and are not written during backup:
+xgic gitlab restore \
+  --archive gitlab.tar.zst \
+  --secrets-dest ./restore/gitlab-secrets.json \
+  --config-dest ./restore/gitlab.rb \
+  --yes
 ```
+
+`xgic gitlab backup` reads the live secrets and config files and does not write
+them back. The archive contains the GitLab backup tar, those two files, and
+`backup-manifest.json`. Registry, LFS, and packages are required unless
+`--allow-missing` names a component GitLab omitted. The manifest is a Pydantic
+model. Its `restore_validation` list records REST and GraphQL checks for a
+later validator. Backup and restore do not call those APIs. Restore checks the
+sidecar before it opens the archive, then validates the manifest.
+
+See [docs/backup.md](docs/backup.md).
+
 
 ---
 

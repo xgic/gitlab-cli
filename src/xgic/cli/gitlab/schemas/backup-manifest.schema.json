@@ -1,0 +1,314 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "backup-manifest.schema.json",
+    "$defs": {
+        "BackupArtifacts": {
+            "additionalProperties": false,
+            "description": "The GitLab application tar inside the outer archive.",
+            "properties": {
+                "application_tar": {
+                    "title": "Application Tar",
+                    "type": "string"
+                },
+                "backup_id": {
+                    "pattern": "^[A-Za-z0-9._-]+$",
+                    "title": "Backup Id",
+                    "type": "string"
+                },
+                "sha256": {
+                    "title": "Sha256",
+                    "type": "string"
+                },
+                "members": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Members",
+                    "type": "array"
+                },
+                "omitted": {
+                    "description": "Components absent from the application tar because the publisher allowed it. Empty means registry, LFS, and packages are present.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Omitted",
+                    "type": "array"
+                }
+            },
+            "required": [
+                "application_tar",
+                "backup_id",
+                "sha256"
+            ],
+            "title": "BackupArtifacts",
+            "type": "object"
+        },
+        "ControlRecord": {
+            "additionalProperties": false,
+            "description": "Who requested the backup. Empty when the caller did not set them.",
+            "properties": {
+                "inventory": {
+                    "default": "",
+                    "title": "Inventory",
+                    "type": "string"
+                },
+                "node": {
+                    "default": "",
+                    "title": "Node",
+                    "type": "string"
+                },
+                "playbook": {
+                    "default": "",
+                    "title": "Playbook",
+                    "type": "string"
+                }
+            },
+            "title": "ControlRecord",
+            "type": "object"
+        },
+        "DockerHost": {
+            "additionalProperties": false,
+            "description": "Host paths recorded with the backup. Empty when the caller did not set them.",
+            "properties": {
+                "inventory_hostname": {
+                    "default": "",
+                    "title": "Inventory Hostname",
+                    "type": "string"
+                },
+                "lan_ip": {
+                    "default": "",
+                    "title": "Lan Ip",
+                    "type": "string"
+                },
+                "backup_bind": {
+                    "default": "",
+                    "title": "Backup Bind",
+                    "type": "string"
+                },
+                "data_root": {
+                    "default": "",
+                    "title": "Data Root",
+                    "type": "string"
+                },
+                "deploy_dir": {
+                    "default": "",
+                    "title": "Deploy Dir",
+                    "type": "string"
+                }
+            },
+            "title": "DockerHost",
+            "type": "object"
+        },
+        "GitLabEnvironment": {
+            "additionalProperties": false,
+            "description": "GitLab facts known when the backup was published.",
+            "properties": {
+                "role": {
+                    "default": "",
+                    "title": "Role",
+                    "type": "string"
+                },
+                "gitlab_env": {
+                    "default": "",
+                    "title": "Gitlab Env",
+                    "type": "string"
+                },
+                "compose_project": {
+                    "pattern": "^[A-Za-z0-9._-]+$",
+                    "title": "Compose Project",
+                    "type": "string"
+                },
+                "external_url": {
+                    "default": "",
+                    "title": "External Url",
+                    "type": "string"
+                },
+                "external_hostname": {
+                    "default": "",
+                    "title": "External Hostname",
+                    "type": "string"
+                },
+                "ee_version": {
+                    "default": "",
+                    "title": "Ee Version",
+                    "type": "string"
+                },
+                "ee_container": {
+                    "default": "",
+                    "title": "Ee Container",
+                    "type": "string"
+                },
+                "deployment": {
+                    "default": "compose",
+                    "title": "Deployment",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "compose_project"
+            ],
+            "title": "GitLabEnvironment",
+            "type": "object"
+        },
+        "GraphqlRestoreCheck": {
+            "additionalProperties": false,
+            "description": "One named GitLab GraphQL query to run after restore.\n\n``query_name`` selects a query owned by the GraphQL client. ``expect`` is\na subset of the ``data`` object. Backup records the check and does not\nperform it.",
+            "properties": {
+                "kind": {
+                    "const": "graphql",
+                    "default": "graphql",
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "query_name": {
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+                    "title": "Query Name",
+                    "type": "string"
+                },
+                "expect": {
+                    "anyOf": [
+                        {
+                            "additionalProperties": true,
+                            "type": "object"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Expect"
+                }
+            },
+            "required": [
+                "query_name"
+            ],
+            "title": "GraphqlRestoreCheck",
+            "type": "object"
+        },
+        "RestRestoreCheck": {
+            "additionalProperties": false,
+            "description": "One read-only GitLab REST call to make after restore.\n\n``expect`` is a flat subset of the JSON object a later validator compares\nwith the response. Backup records the check and does not perform it.",
+            "properties": {
+                "kind": {
+                    "const": "rest",
+                    "default": "rest",
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "method": {
+                    "const": "GET",
+                    "default": "GET",
+                    "title": "Method",
+                    "type": "string"
+                },
+                "path": {
+                    "pattern": "^/[-A-Za-z0-9_./]*$",
+                    "title": "Path",
+                    "type": "string"
+                },
+                "expect": {
+                    "anyOf": [
+                        {
+                            "additionalProperties": {
+                                "type": "string"
+                            },
+                            "type": "object"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Expect"
+                }
+            },
+            "required": [
+                "path"
+            ],
+            "title": "RestRestoreCheck",
+            "type": "object"
+        },
+        "RestoreValidationPlan": {
+            "additionalProperties": false,
+            "description": "API expectations captured with the backup.\n\nA later validator walks ``checks`` and dispatches on ``kind``. A new API\ncheck is a new model added to :data:`RestoreCheck`.",
+            "properties": {
+                "checks": {
+                    "items": {
+                        "discriminator": {
+                            "mapping": {
+                                "graphql": "#/$defs/GraphqlRestoreCheck",
+                                "rest": "#/$defs/RestRestoreCheck"
+                            },
+                            "propertyName": "kind"
+                        },
+                        "oneOf": [
+                            {
+                                "$ref": "#/$defs/RestRestoreCheck"
+                            },
+                            {
+                                "$ref": "#/$defs/GraphqlRestoreCheck"
+                            }
+                        ]
+                    },
+                    "title": "Checks",
+                    "type": "array"
+                }
+            },
+            "title": "RestoreValidationPlan",
+            "type": "object"
+        }
+    },
+    "additionalProperties": false,
+    "description": "Provenance stored inside the backup archive.",
+    "properties": {
+        "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+        },
+        "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+        },
+        "backup_date": {
+            "format": "date",
+            "title": "Backup Date",
+            "type": "string"
+        },
+        "retention_class": {
+            "default": "",
+            "title": "Retention Class",
+            "type": "string"
+        },
+        "org": {
+            "default": "",
+            "title": "Org",
+            "type": "string"
+        },
+        "environment": {
+            "$ref": "#/$defs/GitLabEnvironment"
+        },
+        "docker_host": {
+            "$ref": "#/$defs/DockerHost"
+        },
+        "control": {
+            "$ref": "#/$defs/ControlRecord"
+        },
+        "artifacts": {
+            "$ref": "#/$defs/BackupArtifacts"
+        },
+        "restore_validation": {
+            "$ref": "#/$defs/RestoreValidationPlan"
+        }
+    },
+    "required": [
+        "created_at",
+        "backup_date",
+        "environment",
+        "artifacts"
+    ],
+    "title": "BackupManifest",
+    "type": "object"
+}

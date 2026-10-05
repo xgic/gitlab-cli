@@ -48,8 +48,10 @@ def test_register_ops_commands() -> None:
         args = parser.parse_args(["gitlab", action, "--dry-run"])
         assert args.gitlab_command == action
         assert args.dry_run is True
-    args = parser.parse_args(["gitlab", "restore", "20240101_120000", "--yes", "--dry-run"])
-    assert args.backup_id == "20240101_120000"
+    args = parser.parse_args(
+        ["gitlab", "restore", "--archive", "gitlab.tar.zst", "--yes", "--dry-run"]
+    )
+    assert args.archive == "gitlab.tar.zst"
     assert args.yes is True
 
 
@@ -86,10 +88,27 @@ def _ops_ns(**kwargs):
         "dry_run": True,
         "json": True,
         "yes": False,
-        "backup_id": "20240101_120000",
+        "secrets_file": None,
+        "config_file": None,
+        "archive": None,
+        "secrets_dest": None,
+        "config_dest": None,
+        "allow_missing": None,
     }
     base.update(kwargs)
     return argparse.Namespace(**base)
+
+
+def test_backup_rejects_unknown_allow_missing(capsys) -> None:
+    code = run_backup(_ops_ns(dry_run=True, json=True, allow_missing="wiki"))
+    assert code == 2
+    assert "allow-missing" in json.loads(capsys.readouterr().out)["detail"]
+
+
+def test_backup_requires_live_files(capsys) -> None:
+    code = run_backup(_ops_ns(dry_run=True, json=True))
+    assert code == 2
+    assert "secrets-file" in json.loads(capsys.readouterr().out)["detail"]
 
 
 def test_backup_dry_run_when_service_running(capsys) -> None:
@@ -100,7 +119,14 @@ def test_backup_dry_run_when_service_running(capsys) -> None:
         runner.available.return_value = True
         runner.running_services.return_value = ["gitlab-ee", "xgic-gitlab"]
         mock_cls.return_value = runner
-        code = run_backup(_ops_ns(dry_run=True, json=True))
+        code = run_backup(
+            _ops_ns(
+                dry_run=True,
+                json=True,
+                secrets_file="secrets.json",
+                config_file="gitlab.rb",
+            )
+        )
     assert code == 0
     data = json.loads(capsys.readouterr().out)
     assert data["ok"] is True
@@ -108,18 +134,81 @@ def test_backup_dry_run_when_service_running(capsys) -> None:
 
 
 def test_restore_requires_yes(capsys) -> None:
-    code = run_restore(_ops_ns(dry_run=False, yes=False, json=True))
+    code = run_restore(_ops_ns(dry_run=False, yes=False, json=True, archive="gitlab.tar.zst"))
     assert code == 2
-    data = json.loads(capsys.readouterr().out)
-    assert data["ok"] is False
-    assert "--yes" in data["detail"]
+    assert "--yes" in json.loads(capsys.readouterr().out)["detail"]
 
 
-def test_restore_rejects_bad_id(capsys) -> None:
-    code = run_restore(_ops_ns(backup_id="../evil", dry_run=True, yes=True, json=True))
+def test_restore_requires_a_pair_when_archive_is_omitted(tmp_path, capsys) -> None:
+    with patch("xgic.cli.gitlab.commands.restore.ComposeRunner") as mock_cls:
+        runner = MagicMock()
+        runner.available.return_value = True
+        runner.running_services.return_value = ["gitlab-ee"]
+        mock_cls.return_value = runner
+        code = run_restore(
+            _ops_ns(dry_run=False, yes=True, json=True, backup_dir=str(tmp_path))
+        )
+    assert code == 1
+    assert "pair" in json.loads(capsys.readouterr().out)["detail"]
+    runner.exec_service.assert_not_called()
+
+
+def test_restore_rejects_bad_archive(capsys) -> None:
+    code = run_restore(
+        _ops_ns(archive="../evil.tar.zst", dry_run=True, yes=True, json=True)
+    )
     assert code == 2
-    data = json.loads(capsys.readouterr().out)
-    assert "invalid" in data["detail"]
+    assert "tar.zst" in json.loads(capsys.readouterr().out)["detail"]
+
+
+def test_restore_dry_run_does_not_extract_or_write_destinations(tmp_path, capsys) -> None:
+    from datetime import UTC, datetime
+
+    from xgic.cli.gitlab.archive import BackupSources, LandingPair, sha256_file
+    from xgic.cli.gitlab.manifest import BackupManifest
+
+    gitlab_tar = tmp_path / "1_gitlab_backup.tar"
+    import tarfile
+
+    with tarfile.open(gitlab_tar, "w") as archive:
+        for name in ("registry.tar.gz", "lfs.tar.gz", "packages.tar.gz"):
+            info = tarfile.TarInfo(name)
+            archive.addfile(info)
+    secrets = tmp_path / "live-secrets.json"
+    config = tmp_path / "live.rb"
+    secrets.write_text("{}\n", encoding="utf-8")
+    config.write_text("external_url 'https://gitlab.example'\n", encoding="utf-8")
+    sources = BackupSources(gitlab_tar, secrets, config)
+    landing = tmp_path / "landing"
+    manifest = BackupManifest.create(
+        application_tar=gitlab_tar.name,
+        sha256=sha256_file(gitlab_tar),
+        compose_project="xgic-gitlab",
+        now=datetime(2026, 10, 5, 12, 0, tzinfo=UTC),
+    )
+    LandingPair(landing).publish(sources, manifest)
+    secrets_dest = tmp_path / "out-secrets.json"
+    with patch("xgic.cli.gitlab.commands.restore.ComposeRunner") as mock_cls:
+        runner = MagicMock()
+        runner.available.return_value = True
+        runner.running_services.return_value = ["gitlab-ee"]
+        mock_cls.return_value = runner
+        code = run_restore(
+            _ops_ns(
+                dry_run=True,
+                yes=False,
+                json=True,
+                backup_dir=str(landing),
+                secrets_dest=str(secrets_dest),
+                config_dest=str(tmp_path / "out.rb"),
+            )
+        )
+    assert code == 0
+    assert json.loads(capsys.readouterr().out)["backup_id"] == "1"
+    assert not secrets_dest.exists()
+    assert not (landing / ".restore").exists()
+    assert secrets.read_text(encoding="utf-8") == "{}\n"
+    runner.exec_service.assert_not_called()
 
 
 def test_health_no_docker(capsys) -> None:

@@ -1,31 +1,57 @@
-"""``xgic gitlab backup`` — create a GitLab EE backup via Compose exec."""
+"""``xgic gitlab backup`` — publish one landing-host backup pair."""
 
 from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
+from xgic.cli.gitlab.archive import (
+    ArchiveError,
+    BackupSources,
+    LandingPair,
+    sha256_file,
+)
 from xgic.cli.gitlab.compose import ComposeRunner
 from xgic.cli.gitlab.config import resolve_config
+from xgic.cli.gitlab.manifest import (
+    BackupManifest,
+    ManifestError,
+    parse_allow_missing,
+    split_members,
+)
 from xgic.cli.utils.output import print_error, print_info, print_success, print_warning
 
 
 def run_backup(args: argparse.Namespace) -> int:
-    """Run ``gitlab-backup create`` inside the GitLab EE service container."""
+    """Create a GitLab backup, then publish the ``.tar.zst`` pair.
+
+    The live secrets and config files are copied into the archive and are not
+    written back.
+    """
     cfg = resolve_config(args)
-    runner = ComposeRunner(cfg)
     report: dict[str, Any] = {
         "ok": False,
         "action": "backup",
         "config": cfg.public_dict(),
-        "command": [
-            "gitlab-backup",
-            "create",
-        ],
+        "command": ["gitlab-backup", "create"],
         "detail": "",
     }
+    secrets_file = getattr(args, "secrets_file", None)
+    config_file = getattr(args, "config_file", None)
+    try:
+        allow_missing = set(parse_allow_missing(getattr(args, "allow_missing", None)))
+    except ManifestError as exc:
+        report["detail"] = str(exc)
+        return _emit(args, report, 2)
+    if not secrets_file or not config_file:
+        report["detail"] = "backup requires --secrets-file and --config-file"
+        return _emit(args, report, 2)
 
+    runner = ComposeRunner(cfg)
     if not runner.available():
         report["detail"] = "docker CLI not found on PATH"
         return _emit(args, report, 1)
@@ -38,18 +64,23 @@ def run_backup(args: argparse.Namespace) -> int:
         )
         return _emit(args, report, 1)
 
-    cmd = ["gitlab-backup", "create"]
-    # STRATEGY=copy is common for volume-friendly backups; keep optional via env later.
     if cfg.dry_run:
         report["ok"] = True
         report["detail"] = (
-            f"dry-run: would exec in {cfg.gitlab_service}: {' '.join(cmd)} "
-            f"(host backup dir hint: {cfg.backup_dir})"
+            f"dry-run: would exec in {cfg.gitlab_service}: gitlab-backup create; "
+            f"would publish a .tar.zst pair in {cfg.backup_dir} "
+            "without modifying the secrets or config files"
         )
         return _emit(args, report, 0)
 
+    secrets_path = Path(secrets_file)
+    config_path = Path(config_file)
+    if not secrets_path.is_file() or not config_path.is_file():
+        report["detail"] = "backup requires --secrets-file and --config-file to be files"
+        return _emit(args, report, 2)
+
     print_info(f"Creating backup in service {cfg.gitlab_service}…")
-    proc = runner.exec_service(cfg.gitlab_service, cmd, dry_run=False)
+    proc = runner.exec_service(cfg.gitlab_service, ["gitlab-backup", "create"], dry_run=False)
     if proc is None:
         report["detail"] = "exec did not run"
         return _emit(args, report, 1)
@@ -57,16 +88,41 @@ def run_backup(args: argparse.Namespace) -> int:
     report["returncode"] = proc.returncode
     report["stdout_tail"] = (proc.stdout or "")[-2000:]
     report["stderr_tail"] = (proc.stderr or "")[-2000:]
-    if proc.returncode == 0:
-        report["ok"] = True
-        report["detail"] = (
-            f"backup create completed; copies typically land under the container "
-            f"backup path (host map often {cfg.backup_dir})"
-        )
-        return _emit(args, report, 0)
+    if proc.returncode != 0:
+        report["detail"] = f"gitlab-backup create failed (exit {proc.returncode})"
+        return _emit(args, report, proc.returncode or 1)
 
-    report["detail"] = f"gitlab-backup create failed (exit {proc.returncode})"
-    return _emit(args, report, proc.returncode or 1)
+    landing = Path(cfg.backup_dir)
+    try:
+        pair = LandingPair(landing)
+        gitlab_tar = pair.newest_application_tar()
+        present = {Path(name).name for name in pair.component_names(gitlab_tar)}
+        members, omitted = split_members(present, allow_missing)
+        manifest = BackupManifest.create(
+            application_tar=gitlab_tar.name,
+            sha256=sha256_file(gitlab_tar),
+            compose_project=cfg.project_name,
+            external_url=cfg.gitlab_url or "",
+            backup_bind=str(landing),
+            members=members,
+            omitted=omitted,
+        )
+        archive = pair.publish(
+            BackupSources(
+                gitlab_tar=gitlab_tar,
+                secrets_file=secrets_path,
+                config_file=config_path,
+            ),
+            manifest,
+        )
+    except (ArchiveError, ManifestError, ValidationError) as exc:
+        report["detail"] = str(exc)
+        return _emit(args, report, 1)
+
+    report["ok"] = True
+    report["archive"] = str(archive)
+    report["detail"] = f"published {archive.name}"
+    return _emit(args, report, 0)
 
 
 def _emit(args: argparse.Namespace, report: dict[str, Any], exit_code: int) -> int:

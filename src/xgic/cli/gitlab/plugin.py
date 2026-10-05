@@ -64,18 +64,57 @@ def register(
 
     backup = gitlab_sub.add_parser(
         "backup",
-        help="Create a GitLab EE backup (docker compose exec gitlab-backup create)",
+        help="Create a GitLab EE backup pair (.tar.zst and .sha256)",
+    )
+    backup.add_argument(
+        "--secrets-file",
+        default=None,
+        help="Live gitlab-secrets.json to copy into the archive. The file is not modified.",
+    )
+    backup.add_argument(
+        "--config-file",
+        default=None,
+        help="Live gitlab.rb to copy into the archive. The file is not modified.",
+    )
+    backup.add_argument(
+        "--allow-missing",
+        default=None,
+        help=(
+            "Comma-separated components that may be absent from the GitLab "
+            "tar: registry, lfs, packages. Default: none, so all three are "
+            "required. GitLab SKIP can omit them, and object storage does "
+            "not put them in the tar."
+        ),
     )
     add_common_ops_args(backup)
     backup.set_defaults(func=run_backup)
 
     restore = gitlab_sub.add_parser(
         "restore",
-        help="Restore a GitLab EE backup (destructive; requires --yes)",
+        help="Restore a GitLab EE backup pair (destructive; requires --yes)",
     )
     restore.add_argument(
-        "backup_id",
-        help="Backup id (timestamp prefix; not the full tar filename)",
+        "--archive",
+        default=None,
+        help="Verified .tar.zst (default: latest pair in --backup-dir)",
+    )
+    restore.add_argument(
+        "--secrets-dest",
+        default=None,
+        help=(
+            "Write gitlab-secrets.json here from the verified archive "
+            "during a confirmed restore (default: do not write it outside "
+            "the extract directory)"
+        ),
+    )
+    restore.add_argument(
+        "--config-dest",
+        default=None,
+        help=(
+            "Write gitlab.rb here from the verified archive during a "
+            "confirmed restore (default: do not write it outside the "
+            "extract directory)"
+        ),
     )
     restore.add_argument(
         "--yes",
