@@ -17,12 +17,8 @@ from xgic.cli.gitlab.archive import (
 )
 from xgic.cli.gitlab.compose import ComposeRunner
 from xgic.cli.gitlab.config import resolve_config
-from xgic.cli.gitlab.manifest import (
-    BackupManifest,
-    ManifestError,
-    parse_allow_missing,
-    split_members,
-)
+from xgic.cli.gitlab.manifest import BackupManifest, ManifestError, split_members
+from xgic.cli.gitlab.settings import ConfigError
 from xgic.cli.utils.output import print_error, print_info, print_success, print_warning
 
 
@@ -32,7 +28,17 @@ def run_backup(args: argparse.Namespace) -> int:
     The live secrets and config files are copied into the archive and are not
     written back.
     """
-    cfg = resolve_config(args)
+    try:
+        cfg = resolve_config(args)
+    except (ConfigError, ManifestError) as exc:
+        report = {
+            "ok": False,
+            "action": "backup",
+            "config": {"gitlab_service": "", "compose_file": ""},
+            "command": ["gitlab-backup", "create"],
+            "detail": str(exc),
+        }
+        return _emit(args, report, 2)
     report: dict[str, Any] = {
         "ok": False,
         "action": "backup",
@@ -40,13 +46,9 @@ def run_backup(args: argparse.Namespace) -> int:
         "command": ["gitlab-backup", "create"],
         "detail": "",
     }
-    secrets_file = getattr(args, "secrets_file", None)
-    config_file = getattr(args, "config_file", None)
-    try:
-        allow_missing = set(parse_allow_missing(getattr(args, "allow_missing", None)))
-    except ManifestError as exc:
-        report["detail"] = str(exc)
-        return _emit(args, report, 2)
+    secrets_file = cfg.secrets_file
+    config_file = cfg.config_file
+    allow_missing = set(cfg.allow_missing)
     if not secrets_file or not config_file:
         report["detail"] = "backup requires --secrets-file and --config-file"
         return _emit(args, report, 2)

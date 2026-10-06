@@ -10,6 +10,8 @@ from typing import Any
 
 from xgic.cli.gitlab.compose import ComposeRunner
 from xgic.cli.gitlab.config import resolve_config
+from xgic.cli.gitlab.manifest import ManifestError
+from xgic.cli.gitlab.settings import ConfigError
 from xgic.cli.utils.output import print_error, print_info, print_success, print_warning
 
 
@@ -29,7 +31,11 @@ def _http_ok(url: str, timeout: float = 5.0) -> tuple[bool, str]:
 
 def run_health(args: argparse.Namespace) -> int:
     """Check stack service presence and optional HTTP health endpoints."""
-    cfg = resolve_config(args)
+    try:
+        cfg = resolve_config(args)
+    except (ConfigError, ManifestError) as exc:
+        print_error(str(exc))
+        return 2
     runner = ComposeRunner(cfg)
     report: dict[str, Any] = {
         "ok": False,

@@ -1,0 +1,140 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "gitlab-cli.schema.json",
+    "additionalProperties": false,
+    "description": "Settings an operator or automation can store as JSON.",
+    "properties": {
+        "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+        },
+        "environment": {
+            "anyOf": [
+                {
+                    "enum": [
+                        "development",
+                        "staging",
+                        "production"
+                    ],
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Environment"
+        },
+        "organization": {
+            "default": "",
+            "title": "Organization",
+            "type": "string"
+        },
+        "compose_file": {
+            "default": "docker-compose.yml",
+            "title": "Compose File",
+            "type": "string"
+        },
+        "project_name": {
+            "default": "xgic-gitlab",
+            "title": "Project Name",
+            "type": "string"
+        },
+        "gitlab_service": {
+            "default": "gitlab-ee",
+            "title": "Gitlab Service",
+            "type": "string"
+        },
+        "xgic_service": {
+            "default": "xgic-gitlab",
+            "title": "Xgic Service",
+            "type": "string"
+        },
+        "backup_dir": {
+            "default": "./gitlab-backups",
+            "title": "Backup Dir",
+            "type": "string"
+        },
+        "gitlab_url": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Gitlab Url"
+        },
+        "secrets_file": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Secrets File"
+        },
+        "config_file": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Config File"
+        },
+        "secrets_dest": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Secrets Dest"
+        },
+        "config_dest": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Config Dest"
+        },
+        "allow_missing": {
+            "items": {
+                "enum": [
+                    "registry",
+                    "lfs",
+                    "packages"
+                ],
+                "type": "string"
+            },
+            "title": "Allow Missing",
+            "type": "array"
+        },
+        "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+        }
+    },
+    "title": "GitLabCliConfig",
+    "type": "object"
+}

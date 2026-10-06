@@ -86,6 +86,17 @@ def register(
             "not put them in the tar."
         ),
     )
+    backup.add_argument(
+        "--environment",
+        choices=("development", "staging", "production"),
+        default=None,
+        help="Recorded environment. Default comes from the config file, or is unset.",
+    )
+    backup.add_argument(
+        "--apply",
+        action="store_true",
+        help="Run the backup. Overrides a config file that sets dry_run.",
+    )
     add_common_ops_args(backup)
     backup.set_defaults(func=run_backup)
 
@@ -120,6 +131,17 @@ def register(
         "--yes",
         action="store_true",
         help="Confirm destructive restore",
+    )
+    restore.add_argument(
+        "--environment",
+        choices=("development", "staging", "production"),
+        default=None,
+        help="Recorded environment. Default comes from the config file, or is unset.",
+    )
+    restore.add_argument(
+        "--apply",
+        action="store_true",
+        help="Run the restore when --yes is set. Overrides a config file that sets dry_run.",
     )
     add_common_ops_args(restore)
     restore.set_defaults(func=run_restore)

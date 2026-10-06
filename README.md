@@ -146,7 +146,7 @@ model. Its `restore_validation` list records REST and GraphQL checks for a
 later validator. Backup and restore do not call those APIs. Restore checks the
 sidecar before it opens the archive, then validates the manifest.
 
-See [docs/backup.md](docs/backup.md).
+See [docs/backup.md](docs/backup.md) and [docs/configuration.md](docs/configuration.md).
 
 
 ---

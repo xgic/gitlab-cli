@@ -11,6 +11,8 @@ from typing import Any
 from xgic.cli.gitlab.archive import ArchiveError, LandingPair, write_snapshot
 from xgic.cli.gitlab.compose import ComposeRunner
 from xgic.cli.gitlab.config import resolve_config
+from xgic.cli.gitlab.manifest import ManifestError
+from xgic.cli.gitlab.settings import ConfigError
 from xgic.cli.utils.output import print_error, print_info, print_success, print_warning
 
 _BACKUP_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -23,7 +25,18 @@ def run_restore(args: argparse.Namespace) -> int:
     the sidecar, manifest, and member checks is used. Secrets and config are
     written only when a destination flag is set, and only after ``--yes``.
     """
-    cfg = resolve_config(args)
+    try:
+        cfg = resolve_config(args)
+    except (ConfigError, ManifestError) as exc:
+        report = {
+            "ok": False,
+            "action": "restore",
+            "config": {"gitlab_service": ""},
+            "archive": "",
+            "backup_id": "",
+            "detail": str(exc),
+        }
+        return _emit(args, report, 2)
     archive_arg = str(getattr(args, "archive", "") or "").strip()
     yes = bool(getattr(args, "yes", False))
     archive = Path(archive_arg) if archive_arg else None
@@ -42,8 +55,8 @@ def run_restore(args: argparse.Namespace) -> int:
         report["detail"] = "restore requires --archive pointing at a .tar.zst pair"
         return _emit(args, report, 2)
     try:
-        secrets_dest = _destination(getattr(args, "secrets_dest", None))
-        config_dest = _destination(getattr(args, "config_dest", None))
+        secrets_dest = _destination(cfg.secrets_dest)
+        config_dest = _destination(cfg.config_dest)
     except ArchiveError as exc:
         report["detail"] = str(exc)
         return _emit(args, report, 2)
