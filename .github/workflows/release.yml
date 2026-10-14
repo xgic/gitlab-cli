@@ -118,6 +118,7 @@ jobs:
             "xgic-gitlab-cli==${VER}"
           xgic --version
           xgic gitlab --help
+          xgic gitlab backup --help
           python -c "from xgic.cli import __version__; from xgic.cli.gitlab import __version__ as gv; print(__version__, gv)"
 
   publish-pypi:
@@ -180,6 +181,7 @@ jobs:
           fi
           xgic --version
           xgic gitlab --help
+          xgic gitlab backup --help
           python -c "from xgic.cli import __version__; from xgic.cli.gitlab import __version__ as gv; print(__version__, gv)"
 
   github-release-rc:
