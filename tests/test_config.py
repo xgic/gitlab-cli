@@ -20,6 +20,45 @@ from xgic.cli.gitlab.settings import (
 )
 
 
+def test_resolve_config_reads_flags_from_command_context(monkeypatch) -> None:
+    for key in (
+        "GITLAB_URL",
+        "GITLAB_TOKEN",
+        "XGIC_GITLAB_COMPOSE_FILE",
+        "XGIC_GITLAB_COMPOSE_PROJECT",
+        "XGIC_GITLAB_EE_SERVICE",
+        "XGIC_GITLAB_ORCH_SERVICE",
+        "XGIC_GITLAB_BACKUP_DIR",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    parsed = argparse.Namespace(
+        compose_file="/opt/apps/gitlab/docker-compose.yml",
+        project="gitlab-dev",
+        gitlab_service="gitlab-ee",
+        xgic_service=None,
+        backup_dir="/var/backups/gitlab",
+        url=None,
+        token=None,
+        dry_run=True,
+        apply=False,
+        secrets_file="/etc/gitlab/gitlab-secrets.json",
+        config_file="/etc/gitlab/gitlab.rb",
+        secrets_dest=None,
+        config_dest=None,
+        allow_missing=None,
+        environment="development",
+        config=None,
+    )
+    ctx = argparse.Namespace(env=None, args=parsed)
+    cfg = resolve_config(ctx)
+    assert cfg.compose_file == "/opt/apps/gitlab/docker-compose.yml"
+    assert cfg.project_name == "gitlab-dev"
+    assert cfg.secrets_file == "/etc/gitlab/gitlab-secrets.json"
+    assert cfg.config_file == "/etc/gitlab/gitlab.rb"
+    assert cfg.dry_run is True
+    assert cfg.environment == "development"
+
+
 def test_resolve_defaults(monkeypatch) -> None:
     for key in (
         "GITLAB_URL",

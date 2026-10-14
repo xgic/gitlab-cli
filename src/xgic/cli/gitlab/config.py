@@ -71,6 +71,19 @@ def _first(*values: str | None) -> str | None:
     return None
 
 
+def _namespace(args: argparse.Namespace) -> argparse.Namespace:
+    """Return the argparse namespace.
+
+    The core CLI calls handlers with ``CommandContext``, whose ``args``
+    attribute holds the parsed flags. A handler that reads the context
+    object itself sees none of those flags.
+    """
+    inner = getattr(args, "args", None)
+    if isinstance(inner, argparse.Namespace):
+        return inner
+    return args
+
+
 def resolve_config(args: argparse.Namespace) -> GitLabOpsConfig:
     """Build config from flags, environment, an optional JSON file, and defaults.
 
@@ -81,6 +94,7 @@ def resolve_config(args: argparse.Namespace) -> GitLabOpsConfig:
     from xgic.cli.gitlab.manifest import parse_allow_missing
     from xgic.cli.gitlab.settings import load_cli_config
 
+    args = _namespace(args)
     explicit = getattr(args, "config", None)
     loaded = load_cli_config(Path(str(explicit)) if explicit else default_config_path())
     allow_value = getattr(args, "allow_missing", None)

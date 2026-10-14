@@ -153,8 +153,9 @@ See [docs/backup.md](docs/backup.md) and [docs/configuration.md](docs/configurat
 
 ## Status
 
-**0.1.2.** `xgic gitlab backup` publishes one `.tar.zst` and a sibling `.sha256`.
-TestPyPI `0.1.2rc1` passed smoke. PyPI `0.1.1` does not include that command.
+**0.1.3rc1 — release candidate.** `xgic gitlab backup` reads the flags the
+core CLI passes in. PyPI `0.1.2` publishes the command, and those flags are
+ignored there because the handler receives the command context.
 
 ---
 
