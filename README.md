@@ -153,8 +153,9 @@ See [docs/backup.md](docs/backup.md) and [docs/configuration.md](docs/configurat
 
 ## Status
 
-**0.1.1 — experimental.** Nested `xgic gitlab` commands: `info`, `health`, `backup`, `restore` against
-Docker Compose stacks (typically [xgic/gitlab](https://github.com/xgic/gitlab)).
+**0.1.2rc1 — release candidate.** `xgic gitlab backup` publishes one `.tar.zst`
+and a sibling `.sha256`. PyPI 0.1.1 does not include that command. The final
+0.1.2 tag follows a clean TestPyPI smoke.
 
 ---
 
