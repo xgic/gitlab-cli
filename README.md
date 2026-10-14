@@ -153,9 +153,8 @@ See [docs/backup.md](docs/backup.md) and [docs/configuration.md](docs/configurat
 
 ## Status
 
-**0.1.3rc1 — release candidate.** `xgic gitlab backup` reads the flags the
-core CLI passes in. PyPI `0.1.2` publishes the command, and those flags are
-ignored there because the handler receives the command context.
+**0.1.3.** `xgic gitlab backup` reads the flags the core CLI passes in.
+TestPyPI `0.1.3rc1` passed smoke. PyPI `0.1.2` ignores those flags.
 
 ---
 
