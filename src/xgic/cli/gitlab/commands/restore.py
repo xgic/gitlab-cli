@@ -171,8 +171,11 @@ def _release_mismatch(runner: ComposeRunner, service: str, archive_version: str)
     """Return an error when the archive and the running service differ.
 
     The check reads the service and does not write. It runs after the sidecar
-    and manifest validate, and before the archive is extracted.
+    and manifest validate, and before the archive is extracted. An archive
+    that records no product release is not a mismatch.
     """
+    if not archive_version.strip():
+        return None
     proc = runner.exec_service(
         service,
         ["gitlab-rake", "gitlab:env:info"],

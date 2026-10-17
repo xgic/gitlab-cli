@@ -63,6 +63,14 @@ def test_suffix_match_allows_the_restore() -> None:
     assert _release_mismatch(runner, "gitlab", "19.4.2-ee") is None
 
 
+def test_archive_without_a_release_does_not_query_the_service() -> None:
+    from xgic.cli.gitlab.commands.restore import _release_mismatch
+
+    runner = _Runner(None)
+    assert _release_mismatch(runner, "gitlab", "") is None
+    assert runner.calls == []
+
+
 def test_unreadable_target_refuses_the_restore() -> None:
     from xgic.cli.gitlab.commands.restore import _release_mismatch
 
