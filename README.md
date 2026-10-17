@@ -154,9 +154,10 @@ See [docs/backup.md](docs/backup.md) and [docs/configuration.md](docs/configurat
 
 ## Status
 
-**0.1.4rc1.** Restore compares a recorded product release with the running
+**0.1.4.** Restore compares a recorded product release with the running
 service before it extracts the archive. An image build suffix is the same
-release. PyPI `0.1.3` does not perform that comparison.
+release. TestPyPI `0.1.4rc1` passed smoke. PyPI `0.1.3` does not perform
+that comparison.
 
 ---
 
