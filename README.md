@@ -154,10 +154,9 @@ See [docs/backup.md](docs/backup.md) and [docs/configuration.md](docs/configurat
 
 ## Status
 
-**0.1.4.** Restore compares a recorded product release with the running
-service before it extracts the archive. An image build suffix is the same
-release. TestPyPI `0.1.4rc1` passed smoke. PyPI `0.1.3` does not perform
-that comparison.
+**0.1.5rc1.** After `gitlab-backup create`, the newest application tar is
+copied into the landing directory when that directory is not the service
+volume. PyPI `0.1.4` leaves the tar inside the volume.
 
 ---
 
