@@ -96,6 +96,11 @@ def run_backup(args: argparse.Namespace) -> int:
 
     landing = Path(cfg.backup_dir)
     try:
+        stage_application_tar(runner, cfg.gitlab_service, landing)
+    except ArchiveError as exc:
+        report["detail"] = str(exc)
+        return _emit(args, report, 1)
+    try:
         pair = LandingPair(landing)
         gitlab_tar = pair.newest_application_tar()
         present = {Path(name).name for name in pair.component_names(gitlab_tar)}
@@ -125,6 +130,31 @@ def run_backup(args: argparse.Namespace) -> int:
     report["archive"] = str(archive)
     report["detail"] = f"published {archive.name}"
     return _emit(args, report, 0)
+
+
+def stage_application_tar(runner: ComposeRunner, service: str, landing: Path) -> None:
+    """Copy the newest application tar onto the landing host when it is not there.
+
+    ``gitlab-backup create`` writes inside the service. A named volume is not
+    the landing directory, so the publish step cannot see that tar until it
+    is copied out. A tar already present in ``landing`` is left in place.
+    """
+    proc = runner.exec_service(
+        service,
+        ["bash", "-lc", "ls -1t /var/opt/gitlab/backups/*_gitlab_backup.tar"],
+        dry_run=False,
+    )
+    if proc is None or proc.returncode != 0 or not (proc.stdout or "").strip():
+        raise ArchiveError("gitlab-backup did not leave an application tar")
+    newest = Path(proc.stdout.splitlines()[0].strip())
+    landing.mkdir(parents=True, exist_ok=True)
+    dest = landing / newest.name
+    if dest.is_file() and not dest.is_symlink():
+        return
+    copied = runner.run("cp", f"{service}:{newest}", str(landing), check=False)
+    if copied.returncode != 0 or not dest.is_file():
+        detail = (copied.stderr or "").strip() or "docker compose cp failed"
+        raise ArchiveError(detail)
 
 
 def _emit(args: argparse.Namespace, report: dict[str, Any], exit_code: int) -> int:
