@@ -143,8 +143,9 @@ them back. The archive contains the GitLab backup tar, those two files, and
 `backup-manifest.json`. Registry, LFS, and packages are required unless
 `--allow-missing` names a component GitLab omitted. The manifest is a Pydantic
 model. Its `restore_validation` list records REST and GraphQL checks for a
-later validator. Backup and restore do not call those APIs. Restore checks the
-sidecar before it opens the archive, then validates the manifest.
+later validator. Restore compares a recorded product release with the
+running service before it extracts the archive. An archive with no recorded
+release is not a mismatch.
 
 See [docs/backup.md](docs/backup.md) and [docs/configuration.md](docs/configuration.md).
 
@@ -153,8 +154,9 @@ See [docs/backup.md](docs/backup.md) and [docs/configuration.md](docs/configurat
 
 ## Status
 
-**0.1.3.** `xgic gitlab backup` reads the flags the core CLI passes in.
-TestPyPI `0.1.3rc1` passed smoke. PyPI `0.1.2` ignores those flags.
+**0.1.4rc1.** Restore compares a recorded product release with the running
+service before it extracts the archive. An image build suffix is the same
+release. PyPI `0.1.3` does not perform that comparison.
 
 ---
 
