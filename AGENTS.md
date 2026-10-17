@@ -29,7 +29,7 @@ Public repository. Follow https://github.com/xgic/ai for multi-repo standards.
 - Public-safe content only
 - Human UI review before merge to `main`
 - Dedicated issue-number branches; Conventional Commits
-- **Labels required** on issues/PRs (see community-health)
+- **Labels (mandatory):** Every issue and pull request gets exactly one type label in the create call: `bug`, `enhancement`, `documentation`, `standards`, or `chore`. Welcome Discussion posts use `welcome` and `documentation`. Do not put scoped GitLab labels on GitHub. https://github.com/xgic/ai/blob/main/docs/community-health.md#labels-required
 - Python 3.14+; Apache-2.0; root `CODEOWNERS` (`@xgic`)
 - **No intermediate** `xgic/cli/__init__.py` that clobbers core
 - **PyPI releases:** https://github.com/xgic/ai/blob/main/docs/python-package-release.md
