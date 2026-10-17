@@ -71,13 +71,16 @@ flowchart LR
   choose["Latest pair, or --archive"]
   sidecar["Check the sidecar"]
   manifest["Validate the manifest"]
+  version["Compare the product release"]
   app["gitlab-backup restore"]
-  choose --> sidecar --> manifest --> app
+  choose --> sidecar --> manifest --> version --> app
 ```
 
 With no `--archive`, restore uses the newest pair in `--backup-dir` whose
-sidecar and manifest validate. `--dry-run` checks the sidecar and the manifest
-and does not extract the archive.
+sidecar and manifest validate. It then reads the running service version and
+refuses the restore when that release differs from the manifest. A trailing
+image build suffix does not make a different release. `--dry-run` checks the
+sidecar, the manifest, and the release, and does not extract the archive.
 
 ## Manifest
 
@@ -85,7 +88,9 @@ and does not extract the archive.
 that model is `src/xgic/cli/gitlab/schemas/backup-manifest.schema.json`.
 Unknown fields are rejected.
 
-`restore_validation.checks` records work for a later validator:
+`restore_validation.checks` records work for a later validator.
+Restore compares the recorded product release before it extracts the archive.
+It does not call the other recorded checks:
 
 | `kind` | API | What backup records |
 | --- | --- | --- |
