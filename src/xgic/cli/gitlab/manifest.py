@@ -37,6 +37,10 @@ _APP_TAR = re.compile(r"^(?P<backup_id>[A-Za-z0-9._-]+)_gitlab_backup\.tar$")
 _VERSION = re.compile(
     r"^\d+_\d{4}_\d{2}_\d{2}_(?P<version>\d+\.\d+\.\d+(?:-[A-Za-z0-9.]+)?)$"
 )
+_PRODUCT_RELEASE = re.compile(
+    r"^(?P<release>\d+\.\d+\.\d+(?:-[A-Za-z]+)?)(?:\.\d+)?$"
+)
+_SERVICE_VERSION = re.compile(r"^Version:\s*(\S+)\s*$", re.MULTILINE)
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -301,6 +305,34 @@ def application_identity(name: str) -> tuple[str, str]:
     version_match = _VERSION.fullmatch(backup_id)
     version = version_match.group("version") if version_match else ""
     return backup_id, version
+
+
+def product_release(version: str) -> str:
+    """Return the product release, ignoring a trailing image build suffix.
+
+    A different major, minor, patch, or edition does not match. An empty
+    or unrecognized string raises :class:`ManifestError`.
+    """
+    match = _PRODUCT_RELEASE.fullmatch(version.strip())
+    if match is None:
+        raise ManifestError(f"unrecognized GitLab version {version!r}")
+    return match.group("release")
+
+
+def same_product_release(archive_version: str, target_version: str) -> bool:
+    """True when both strings name the same product release."""
+    try:
+        return product_release(archive_version) == product_release(target_version)
+    except ManifestError:
+        return False
+
+
+def version_from_env_info(text: str) -> str:
+    """Return the first GitLab ``Version:`` line from ``gitlab:env:info``."""
+    match = _SERVICE_VERSION.search(text)
+    if match is None:
+        raise ManifestError("target did not report a GitLab version")
+    return match.group(1)
 
 
 def recorded_checks(*, version: str) -> list[RestoreCheck]:

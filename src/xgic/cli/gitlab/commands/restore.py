@@ -11,7 +11,11 @@ from typing import Any
 from xgic.cli.gitlab.archive import ArchiveError, LandingPair, write_snapshot
 from xgic.cli.gitlab.compose import ComposeRunner
 from xgic.cli.gitlab.config import resolve_config
-from xgic.cli.gitlab.manifest import ManifestError
+from xgic.cli.gitlab.manifest import (
+    ManifestError,
+    same_product_release,
+    version_from_env_info,
+)
 from xgic.cli.gitlab.settings import ConfigError
 from xgic.cli.utils.output import print_error, print_info, print_success, print_warning
 
@@ -86,27 +90,36 @@ def run_restore(args: argparse.Namespace) -> int:
         archive = landing / archive.name
     pair = LandingPair(landing)
     try:
-        if cfg.dry_run:
-            if archive is not None:
-                chosen = archive
-                manifest = pair.manifest_of(archive)
-            else:
-                chosen, manifest = pair.manifest_of_latest()
-            backup_id = manifest.artifacts.backup_id
-            _require_backup_id(backup_id)
-            report["archive"] = str(chosen)
-            report["backup_id"] = backup_id
-            report["ok"] = True
-            report["detail"] = (
-                "dry-run: would exec in "
-                f"{cfg.gitlab_service}: gitlab-backup restore BACKUP={backup_id} force=yes"
-            )
-            return _emit(args, report, 0)
-        opened = (
-            pair.open(archive, landing / ".restore")
-            if archive is not None
-            else pair.open_latest(landing / ".restore")
+        if archive is not None:
+            chosen = archive
+            manifest = pair.manifest_of(archive)
+        else:
+            chosen, manifest = pair.manifest_of_latest()
+    except ArchiveError as exc:
+        report["detail"] = str(exc)
+        return _emit(args, report, 1)
+
+    backup_id = manifest.artifacts.backup_id
+    try:
+        _require_backup_id(backup_id)
+    except ArchiveError as exc:
+        report["detail"] = str(exc)
+        return _emit(args, report, 1)
+    report["archive"] = str(chosen)
+    report["backup_id"] = backup_id
+    mismatch = _release_mismatch(runner, cfg.gitlab_service, manifest.environment.ee_version)
+    if mismatch is not None:
+        report["detail"] = mismatch
+        return _emit(args, report, 1)
+    if cfg.dry_run:
+        report["ok"] = True
+        report["detail"] = (
+            "dry-run: would exec in "
+            f"{cfg.gitlab_service}: gitlab-backup restore BACKUP={backup_id} force=yes"
         )
+        return _emit(args, report, 0)
+    try:
+        opened = pair.open(chosen, landing / ".restore")
     except ArchiveError as exc:
         report["detail"] = str(exc)
         return _emit(args, report, 1)
@@ -152,6 +165,34 @@ def run_restore(args: argparse.Namespace) -> int:
 
     report["detail"] = f"gitlab-backup restore failed (exit {proc.returncode})"
     return _emit(args, report, proc.returncode or 1)
+
+
+def _release_mismatch(runner: ComposeRunner, service: str, archive_version: str) -> str | None:
+    """Return an error when the archive and the running service differ.
+
+    The check reads the service and does not write. It runs after the sidecar
+    and manifest validate, and before the archive is extracted. An archive
+    that records no product release is not a mismatch.
+    """
+    if not archive_version.strip():
+        return None
+    proc = runner.exec_service(
+        service,
+        ["gitlab-rake", "gitlab:env:info"],
+        dry_run=False,
+    )
+    if proc is None or proc.returncode != 0:
+        return "cannot read the target GitLab version"
+    try:
+        target_version = version_from_env_info(proc.stdout or "")
+    except ManifestError as exc:
+        return str(exc)
+    if same_product_release(archive_version, target_version):
+        return None
+    return (
+        f"archive version {archive_version or '(none)'} does not match "
+        f"target version {target_version}"
+    )
 
 
 def _require_backup_id(backup_id: str) -> None:
