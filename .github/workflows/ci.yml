@@ -29,7 +29,7 @@ jobs:
       - name: Install core + package
         run: |
           python -m pip install --upgrade pip
-          pip install "xgic-cli>=0.2.1"
+          pip install "xgic-cli>=0.2.2"
           pip install -e ".[dev]"
 
       - name: Ruff
@@ -58,7 +58,7 @@ jobs:
           uv venv .venv-smoke
           source .venv-smoke/bin/activate
           uv pip install --upgrade pip
-          uv pip install "xgic-cli>=0.2.1"
+          uv pip install "xgic-cli>=0.2.2"
           uv pip install dist/*.whl
           xgic --version
           xgic gitlab --help
