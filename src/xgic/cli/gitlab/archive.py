@@ -61,10 +61,13 @@ class OpenedPair:
         return target
 
 
+_CHUNK_SIZE = 1024 * 1024
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        for chunk in iter(lambda: handle.read(_CHUNK_SIZE), b""):
             digest.update(chunk)
     return digest.hexdigest()
 
@@ -311,8 +314,13 @@ def write_snapshot(source: Path, dest: Path) -> None:
     _write_private(source, dest)
 
 
+def _copy_fileobj(source: Path, dest: Path) -> None:
+    with source.open("rb") as src, dest.open("wb") as dst:
+        shutil.copyfileobj(src, dst, _CHUNK_SIZE)
+
+
 def _copy_bytes(source: Path, dest: Path) -> None:
-    dest.write_bytes(source.read_bytes())
+    _copy_fileobj(source, dest)
     os.chmod(dest, _SECRET_MODE)
 
 
@@ -324,7 +332,7 @@ def _write_text(path: Path, text: str) -> None:
 def _write_private(source: Path, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     partial = dest.with_name(dest.name + ".partial")
-    partial.write_bytes(source.read_bytes())
+    _copy_fileobj(source, partial)
     os.chmod(partial, _SECRET_MODE)
     os.replace(partial, dest)
 
