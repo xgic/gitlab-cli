@@ -154,9 +154,10 @@ See [docs/backup.md](docs/backup.md) and [docs/configuration.md](docs/configurat
 
 ## Status
 
-**0.1.5rc1.** After `gitlab-backup create`, the newest application tar is
+**0.1.5.** After `gitlab-backup create`, the newest application tar is
 copied into the landing directory when that directory is not the service
-volume. PyPI `0.1.4` leaves the tar inside the volume.
+volume. TestPyPI `0.1.5rc1` passed smoke. PyPI `0.1.4` leaves the tar
+inside the volume.
 
 ---
 
