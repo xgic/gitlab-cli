@@ -88,7 +88,7 @@ xgic gitlab --help
 ### Requirements
 
 - Python **3.14+**
-- `xgic-cli` ≥ 0.2.1
+- `xgic-cli` ≥ 0.2.2
 - Docker / Docker Compose for stack ops (`health` / `backup` / `restore`)
 
 ---
@@ -153,6 +153,9 @@ See [docs/backup.md](docs/backup.md) and [docs/configuration.md](docs/configurat
 ---
 
 ## Status
+
+**0.1.6.** Pair creation copies the application tar in 1 MiB chunks, the same
+buffer the hash uses. The package depends on `xgic-cli` ≥ 0.2.2.
 
 **0.1.5.** After `gitlab-backup create`, the newest application tar is
 copied into the landing directory when that directory is not the service

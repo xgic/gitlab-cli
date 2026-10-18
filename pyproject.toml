@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xgic-gitlab-cli"
-version = "0.1.5"
+version = "0.1.6rc1"
 description = "XGIC CLI GitLab module - GitLab ops commands and helpers (xgic.cli.gitlab)."
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -14,7 +14,7 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "pydantic>=2.0.0",
-    "xgic-cli>=0.2.1",
+    "xgic-cli>=0.2.2",
     "rich>=13.7",
 ]
 keywords = [
