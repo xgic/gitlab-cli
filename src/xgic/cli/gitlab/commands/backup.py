@@ -39,11 +39,12 @@ def run_backup(args: argparse.Namespace) -> int:
             "detail": str(exc),
         }
         return _emit(args, report, 2)
+    create_command = _backup_create_command(set(cfg.allow_missing))
     report: dict[str, Any] = {
         "ok": False,
         "action": "backup",
         "config": cfg.public_dict(),
-        "command": ["gitlab-backup", "create"],
+        "command": create_command,
         "detail": "",
     }
     secrets_file = cfg.secrets_file
@@ -69,7 +70,7 @@ def run_backup(args: argparse.Namespace) -> int:
     if cfg.dry_run:
         report["ok"] = True
         report["detail"] = (
-            f"dry-run: would exec in {cfg.gitlab_service}: gitlab-backup create; "
+            f"dry-run: would exec in {cfg.gitlab_service}: {' '.join(create_command)}; "
             f"would publish a .tar.zst pair in {cfg.backup_dir} "
             "without modifying the secrets or config files"
         )
@@ -82,7 +83,7 @@ def run_backup(args: argparse.Namespace) -> int:
         return _emit(args, report, 2)
 
     print_info(f"Creating backup in service {cfg.gitlab_service}…")
-    proc = runner.exec_service(cfg.gitlab_service, ["gitlab-backup", "create"], dry_run=False)
+    proc = runner.exec_service(cfg.gitlab_service, create_command, dry_run=False)
     if proc is None:
         report["detail"] = "exec did not run"
         return _emit(args, report, 1)
@@ -130,6 +131,17 @@ def run_backup(args: argparse.Namespace) -> int:
     report["archive"] = str(archive)
     report["detail"] = f"published {archive.name}"
     return _emit(args, report, 0)
+
+
+def _backup_create_command(allow_missing: set[str]) -> list[str]:
+    """Build the in-container create command.
+
+    ``SKIP`` is an environment variable of ``gitlab-backup``, not a flag.
+    Registry is the only component this command skips. LFS and packages stay.
+    """
+    if "registry.tar.gz" not in allow_missing:
+        return ["gitlab-backup", "create"]
+    return ["bash", "-lc", "SKIP=registry exec gitlab-backup create"]
 
 
 def stage_application_tar(runner: ComposeRunner, service: str, landing: Path) -> None:
