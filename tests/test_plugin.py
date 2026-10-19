@@ -111,6 +111,56 @@ def test_backup_requires_live_files(capsys) -> None:
     assert "secrets-file" in json.loads(capsys.readouterr().out)["detail"]
 
 
+def test_backup_create_skips_registry_when_allowed(tmp_path, capsys) -> None:
+    secrets = tmp_path / "secrets.json"
+    config = tmp_path / "gitlab.rb"
+    secrets.write_text("{}\n", encoding="utf-8")
+    config.write_text("external_url 'https://gitlab.example'\n", encoding="utf-8")
+    with patch("xgic.cli.gitlab.commands.backup.ComposeRunner") as mock_cls:
+        runner = MagicMock()
+        runner.available.return_value = True
+        runner.running_services.return_value = ["gitlab-ee", "xgic-gitlab"]
+        runner.exec_service.return_value = MagicMock(returncode=1, stdout="", stderr="stopped")
+        mock_cls.return_value = runner
+        code = run_backup(
+            _ops_ns(
+                dry_run=False,
+                json=True,
+                secrets_file=str(secrets),
+                config_file=str(config),
+                allow_missing="registry",
+                backup_dir=str(tmp_path),
+            )
+        )
+    assert code != 0
+    command = runner.exec_service.call_args.args[1]
+    assert command == ["bash", "-lc", "SKIP=registry exec gitlab-backup create"]
+
+
+def test_backup_create_keeps_registry_by_default(tmp_path, capsys) -> None:
+    secrets = tmp_path / "secrets.json"
+    config = tmp_path / "gitlab.rb"
+    secrets.write_text("{}\n", encoding="utf-8")
+    config.write_text("external_url 'https://gitlab.example'\n", encoding="utf-8")
+    with patch("xgic.cli.gitlab.commands.backup.ComposeRunner") as mock_cls:
+        runner = MagicMock()
+        runner.available.return_value = True
+        runner.running_services.return_value = ["gitlab-ee", "xgic-gitlab"]
+        runner.exec_service.return_value = MagicMock(returncode=1, stdout="", stderr="stopped")
+        mock_cls.return_value = runner
+        run_backup(
+            _ops_ns(
+                dry_run=False,
+                json=True,
+                secrets_file=str(secrets),
+                config_file=str(config),
+                backup_dir=str(tmp_path),
+            )
+        )
+    command = runner.exec_service.call_args.args[1]
+    assert command == ["gitlab-backup", "create"]
+
+
 def test_backup_dry_run_when_service_running(capsys) -> None:
     with (
         patch("xgic.cli.gitlab.commands.backup.ComposeRunner") as mock_cls,
