@@ -154,6 +154,10 @@ See [docs/backup.md](docs/backup.md) and [docs/configuration.md](docs/configurat
 
 ## Status
 
+**0.1.7.** When `--allow-missing` includes `registry`, backup creation omits
+the container registry. LFS and packages stay required. This candidate is
+`0.1.7rc1`.
+
 **0.1.6.** Pair creation copies the application tar in 1 MiB chunks, the same
 buffer the hash uses. The package depends on `xgic-cli` ≥ 0.2.2.
 
