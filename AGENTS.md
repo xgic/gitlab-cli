@@ -33,4 +33,5 @@ Public repository. Follow https://github.com/xgic/ai for multi-repo standards.
 - Python 3.14+; Apache-2.0; root `CODEOWNERS` (`@xgic`)
 - **No intermediate** `xgic/cli/__init__.py` that clobbers core
 - **PyPI releases:** https://github.com/xgic/ai/blob/main/docs/python-package-release.md
+- **Release milestone:** titled `X.Y.Z`, matching the published version. The Git tag stays `vX.Y.Z`. Set it on every issue and pull request included in the release. GitHub does not copy the issue milestone onto the pull request. The candidate and the final publish share it. When the shipped version changes, move both to that `X.Y.Z` before the milestone closes. Close the parent issue, then the milestone, after the final publish and its acceptance. https://github.com/xgic/ai/blob/main/docs/work-tracking-and-checklists.md
 
