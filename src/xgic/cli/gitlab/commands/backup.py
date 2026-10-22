@@ -122,6 +122,7 @@ def run_backup(args: argparse.Namespace) -> int:
                 config_file=config_path,
             ),
             manifest,
+            project=cfg.project_name,
         )
     except (ArchiveError, ManifestError, ValidationError) as exc:
         report["detail"] = str(exc)

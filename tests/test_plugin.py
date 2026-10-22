@@ -217,7 +217,9 @@ def test_restore_dry_run_does_not_extract_or_write_destinations(tmp_path, capsys
     from xgic.cli.gitlab.archive import BackupSources, LandingPair, sha256_file
     from xgic.cli.gitlab.manifest import BackupManifest
 
-    gitlab_tar = tmp_path / "1_gitlab_backup.tar"
+    stamp = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
+    unix = str(int(stamp.timestamp()))
+    gitlab_tar = tmp_path / f"{unix}_2026_10_05_19.2.1-ee_gitlab_backup.tar"
     import tarfile
 
     with tarfile.open(gitlab_tar, "w") as archive:
@@ -242,6 +244,10 @@ def test_restore_dry_run_does_not_extract_or_write_destinations(tmp_path, capsys
         runner = MagicMock()
         runner.available.return_value = True
         runner.running_services.return_value = ["gitlab-ee"]
+        version = MagicMock()
+        version.returncode = 0
+        version.stdout = "Version: 19.2.1-ee\n"
+        runner.exec_service.return_value = version
         mock_cls.return_value = runner
         code = run_restore(
             _ops_ns(
@@ -254,11 +260,12 @@ def test_restore_dry_run_does_not_extract_or_write_destinations(tmp_path, capsys
             )
         )
     assert code == 0
-    assert json.loads(capsys.readouterr().out)["backup_id"] == "1"
+    assert json.loads(capsys.readouterr().out)["backup_id"] == (
+        f"{unix}_2026_10_05_19.2.1-ee"
+    )
     assert not secrets_dest.exists()
     assert not (landing / ".restore").exists()
     assert secrets.read_text(encoding="utf-8") == "{}\n"
-    runner.exec_service.assert_not_called()
 
 
 def test_health_no_docker(capsys) -> None:

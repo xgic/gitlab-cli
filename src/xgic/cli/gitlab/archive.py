@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
@@ -26,6 +28,39 @@ _SECRET_MODE = 0o600
 
 class ArchiveError(Exception):
     """The backup pair is missing a required member or fails its check."""
+
+
+_PROJECT = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+def published_archive_name(project: str, application_tar: str) -> str:
+    """Return ``{project}_{YYYYMMDD}T{HHMMSS}Z_{version}.tar.zst``.
+
+    The timestamp is the UTC second already stored in the GitLab backup id.
+    The id itself stays inside the archive.
+    """
+    if _PROJECT.fullmatch(project) is None:
+        raise ArchiveError("project must be kebab-case")
+    suffix = "_gitlab_backup.tar"
+    if not application_tar.endswith(suffix):
+        raise ArchiveError("application tar name is not a GitLab backup")
+    parts = application_tar[: -len(suffix)].split("_")
+    if len(parts) != 5:
+        raise ArchiveError("version must not contain underscores")
+    unix, year, month, day, version = parts
+    if not (
+        unix.isdigit()
+        and len(year) == 4
+        and year.isdigit()
+        and len(month) == 2
+        and month.isdigit()
+        and len(day) == 2
+        and day.isdigit()
+        and version
+    ):
+        raise ArchiveError("GitLab backup id is not unix_YYYY_MM_DD_version")
+    stamp = datetime.fromtimestamp(int(unix), UTC).strftime("%Y%m%dT%H%M%SZ")
+    return f"{project}_{stamp}_{version}.tar.zst"
 
 
 class CommandRunner(Protocol):
@@ -96,7 +131,12 @@ class LandingPair:
             raise ArchiveError(f"no GitLab backup tar in {self.output_dir}")
         return found[-1]
 
-    def publish(self, sources: BackupSources, manifest: BackupManifest) -> Path:
+    def publish(
+        self,
+        sources: BackupSources,
+        manifest: BackupManifest,
+        project: str | None = None,
+    ) -> Path:
         """Write the pair. The source secrets and config files are not modified."""
         self._require_sources(sources)
         self._require_recorded_members(sources.gitlab_tar, manifest)
@@ -105,11 +145,14 @@ class LandingPair:
         if manifest.artifacts.sha256 != sha256_file(sources.gitlab_tar):
             raise ArchiveError("manifest digest does not match the application tar")
         confirmed = self._validate_manifest(manifest.to_json())
-        archive_name = sources.gitlab_tar.name.replace("_gitlab_backup.tar", ".tar.zst")
-        if not archive_name.endswith(".tar.zst") or archive_name == ".tar.zst":
-            raise ArchiveError("archive name must end in .tar.zst")
+        archive_name = published_archive_name(
+            project if project is not None else manifest.environment.compose_project,
+            sources.gitlab_tar.name,
+        )
         self.output_dir.mkdir(parents=True, exist_ok=True)
         archive = self.output_dir / archive_name
+        if archive.exists():
+            raise ArchiveError(f"refusing to overwrite {archive.name}")
         partial = self.output_dir / f"{archive_name}.partial"
         sidecar_partial = self.output_dir / f"{archive_name}.sha256.partial"
         sidecar = archive.with_name(archive.name + ".sha256")
