@@ -13,6 +13,7 @@ Public repository. Follow https://github.com/xgic/ai for multi-repo standards.
 - Nested `xgic gitlab …` product commands via entry points (`xgic.cli.commands`)
 - Missing ACTION prints full usage (exit 2)
 - GitLab ops helpers for public exemplary use (`health` / `backup` / `restore` via Compose + env/flags)
+- Published backup archives are `{project}_{YYYYMMDD}T{HHMMSS}Z_{version}.tar.zst` (example `gitlab-example_20261005T120000Z_19.2.1-ee.tar.zst`). The GitLab backup id stays inside the archive.
 - GraphQL automation via [xgic/gitlab-graphql](https://github.com/xgic/gitlab-graphql) when wired
 
 ## Out of scope

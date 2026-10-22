@@ -36,8 +36,14 @@ def _inner_tar(path: Path, members: tuple[str, ...]) -> None:
             archive.addfile(info)
 
 
+_STAMP = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
+_UNIX = str(int(_STAMP.timestamp()))
+_INNER = f"{_UNIX}_2026_10_05_19.2.1-ee_gitlab_backup.tar"
+_OUTER = f"xgic-gitlab_{_STAMP.strftime('%Y%m%dT%H%M%SZ')}_19.2.1-ee.tar.zst"
+
+
 def _sources(tmp_path: Path, members: tuple[str, ...] = INNER) -> BackupSources:
-    gitlab_tar = tmp_path / "1_gitlab_backup.tar"
+    gitlab_tar = tmp_path / _INNER
     _inner_tar(gitlab_tar, members)
     secrets = tmp_path / "live-secrets.json"
     config = tmp_path / "live.rb"
@@ -69,18 +75,19 @@ def test_publish_pair_does_not_change_source_files(tmp_path: Path) -> None:
         sources.config_file.stat().st_mtime_ns,
     )
     archive = LandingPair(tmp_path / "out").publish(sources, _manifest(sources))
-    assert archive.name == "1.tar.zst"
+    assert archive.name == _OUTER
     assert archive.stat().st_mode & 0o777 == 0o600
-    sidecar = archive.with_name("1.tar.zst.sha256")
+    sidecar = archive.with_name(f"{_OUTER}.sha256")
     assert sidecar.read_text(encoding="utf-8") == (
-        f"{sha256_file(archive)}  1.tar.zst\n"
+        f"{sha256_file(archive)}  {_OUTER}\n"
     )
     assert not (tmp_path / "out" / "backup-manifest.json").exists()
     assert (sources.secrets_file.read_bytes(), sources.config_file.read_bytes()) == before[:2]
     assert sources.secrets_file.stat().st_mtime_ns == before[2]
     assert sources.config_file.stat().st_mtime_ns == before[3]
     opened = LandingPair(tmp_path / "out").open(archive, tmp_path / "restore")
-    assert opened.gitlab_tar.name == "1_gitlab_backup.tar"
+    assert opened.gitlab_tar.name == _INNER
+    assert opened.manifest.artifacts.backup_id == _INNER.removesuffix("_gitlab_backup.tar")
     assert opened.secrets_file.read_text(encoding="utf-8").startswith("{")
     assert opened.config_file.is_file()
     assert opened.manifest.artifacts.sha256 == sha256_file(sources.gitlab_tar)
@@ -128,6 +135,35 @@ def test_committed_schema_matches_the_model() -> None:
     assert committed["$id"] == "backup-manifest.schema.json"
     assert "RestRestoreCheck" in committed["$defs"]
     assert "GraphqlRestoreCheck" in committed["$defs"]
+
+
+def test_publish_refuses_a_project_that_is_not_kebab_case(tmp_path: Path) -> None:
+    sources = _sources(tmp_path)
+    with pytest.raises(ArchiveError, match="kebab-case"):
+        LandingPair(tmp_path / "out").publish(sources, _manifest(sources), project="GitLab_Example")
+
+
+def test_publish_refuses_a_version_that_contains_an_underscore(tmp_path: Path) -> None:
+    sources = _sources(tmp_path)
+    bad = tmp_path / f"{_UNIX}_2026_10_05_19.2.1_ee_gitlab_backup.tar"
+    sources.gitlab_tar.rename(bad)
+    sources = BackupSources(bad, sources.secrets_file, sources.config_file)
+    manifest = BackupManifest.create(
+        application_tar=bad.name,
+        sha256=sha256_file(bad),
+        compose_project="xgic-gitlab",
+        now=_STAMP,
+    )
+    with pytest.raises(ArchiveError, match="underscore"):
+        LandingPair(tmp_path / "out").publish(sources, manifest)
+
+
+def test_publish_refuses_an_existing_destination(tmp_path: Path) -> None:
+    sources = _sources(tmp_path)
+    landing = LandingPair(tmp_path / "out")
+    landing.publish(sources, _manifest(sources))
+    with pytest.raises(ArchiveError, match="overwrite"):
+        landing.publish(sources, _manifest(sources))
 
 
 def test_publish_allows_an_explicit_missing_registry(tmp_path: Path) -> None:

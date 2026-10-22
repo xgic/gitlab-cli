@@ -38,6 +38,14 @@ archive file name, and a newline. Check it with `sha256sum -c` before opening
 the archive. The manifest repeats the SHA-256 of the GitLab application tar.
 It does not replace the sidecar.
 
+The published archive name is `{project}_{YYYYMMDD}T{HHMMSS}Z_{version}.tar.zst`.
+`project` is the kebab-case Compose project. The timestamp is the UTC second
+already in the GitLab backup id. `version` keeps dots and hyphens.
+Example: `gitlab-example_20261005T120000Z_19.2.1-ee.tar.zst`.
+The member inside the archive stays `{backup_id}_gitlab_backup.tar`.
+`gitlab-backup restore BACKUP=` uses that id. An existing destination
+archive is refused.
+
 Backup reads the live secrets file and the live `gitlab.rb`. It does not write
 either file back. Restore writes them only when `--secrets-dest` or
 `--config-dest` is set, and only after `--yes`.
